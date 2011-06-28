@@ -1,0 +1,61 @@
+
+  ST-Ericsson U300 series Android Radio Interface Layer
+
+BUILDING
+  Building u300-ril is done through the Android build system.
+
+  First, unpack the u300-ril package into somewhere in the android source tree,
+  here we have used mydroid/hardware/ste/ as an example.
+
+  In the Android root directory (here called mydroid) do:
+
+  mydroid$ source build/envsetup.sh
+  mydroid/hardware/ste/u300-ril$ cd hardware/ste/u300-ril/
+  mydroid/hardware/ste/u300-ril$ mm
+
+  This will produce the libu300-ril.so in the
+   mydroid/out/product/..../system/lib/ directory.
+
+INSTALLATION
+  Copy the libu300-ril.so file to the /system/lib/ directory on target and
+  modify the ril-daemon service in android's init.rc to use it. A sample
+  follows:
+
+  service ril-daemon /system/bin/rild -l /system/lib/libu300-ril.so -- -c CAIF -i gprs0
+      socket rild stream 660 root radio
+      socket rild-debug stream 660 radio system
+      user root
+      group radio cache inet misc
+      disabled
+
+  The command line configuration parameters for u300-ril follows:
+    -c : Channel type (CAIF/UNIX/IP/TTY/CHAR) for the AT channel.
+    -n : Number of channels to use (maximum two channels are supported).
+    -p : Primary channel argument. Mandatory if channel type is different than CAIF.
+    -s : Secondary channel argument. Mandatory if channel type is different than CAIF.
+    -x : Extra channel argument. Used to specify the host if channel type is IP.
+    -i : Defines what network interface will be used for PDP context setup.
+         Default is currently gprs0.
+
+  The service is marked as disabled since we usually need to configure the
+  modem communication channels before starting the RIL. This is done trough
+  a simple shell script, combined with a service defined in init.rc that will
+  invoke the script. Once the script is finished, the RIL-daemon will be
+  started. A sample service in init.rc:
+
+    service ste-init /system/etc/init.ste.sh
+        oneshot
+
+  Make sure that the RIL has access to the AT channel or change it if needed.
+
+  For example to change permission rights to /dev/chnlat* in init.rc, please add:
+
+    device /dev/chnlat* 0660 radio radio
+
+  to init.rc above the service definitions. This is important, since the RIL
+  will not be able to open the AT channels without the correct permissions set.
+
+  Also, be sure that PPP is disabled in init.rc, since ST-Ericsson RIL does
+  not use PPP and if PPP is enabled, setup of data operations will fail.
+
+
